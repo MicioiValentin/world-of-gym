@@ -56,6 +56,22 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/User" }
         "401": { description: Unauthorized }
+    patch:
+      summary: Update current user profile (e.g., body weight)
+      securtity: [ { bearerAuth: [] } ]
+      requestBody:
+        required: true
+        content:
+          applicatio/json:
+            schema: { $ref: "#components/schemas/UpdateProfileRequest" }
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "400": { description: Unauthorized}
 
   /v1/sessions:
     post:
@@ -108,6 +124,29 @@ paths:
               schema: { $ref: "#/components/schemas/Set" }
         "422": { description: Validation error }
 
+  /v1/meta/weight-classes:
+    get:
+      summary: List configured weight classes
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  classes:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name: { type: string, example: "74 kg"}
+                        minKg: { type: number, example: "66.01"}
+                        maxKg:
+                          type: number
+                          nullable: true
+                          example: 74.0
+
   /v1/leaderboard:
     get:
       summary: Get leaderboard
@@ -118,14 +157,25 @@ paths:
             type: string
             enum: [daily, weekly, alltime]
           required: true
+        - in: query
+          name: weightClass
+          schema:
+            type: string
+            required: false
+            description: "If provided, returns only users in this weight class."
       responses:
         "200":
+          description: OK
           content:
             application/json:
               schema:
                 type: object
                 properties:
                   period: { type: string }
+                  weightclas:
+                  type: string
+                  nullable: true
+                  description: "Weight class filter applied, null/omitted if not used."
                   top:
                     type: array
                     items: { $ref: "#/components/schemas/LeaderboardEntry" }
@@ -151,7 +201,7 @@ components:
       properties:
         email: { type: string, format: email }
         password: { type: string, minLength: 8 }
-        username: { type: string, minLength: 3, maxLength: 24 }
+        username: { type: string, minLength: 4, maxLength: 24 }
     LoginRequest:
       type: object
       required: [email, password]
@@ -163,6 +213,13 @@ components:
       properties:
         token: { type: string }
         user: { $ref: "#/components/schemas/User" }
+    
+
+    UpdateProfileRequest:
+      type: object
+      properties:
+        username: { type: string, minLength: 4, maxLength: 24 }
+        bodyWeightKg: { type: number, minimum: 0 }
 
     User:
       type: object
@@ -173,6 +230,15 @@ components:
         xp: { type: integer, minimum: 0, description: "progress within current level" }
         totalXp: { type: integer, minimum: 0 }
         lastWorkoutAt: { type: string, format: date-time }
+        bodyWeightKg:
+          type: number
+          minimum: 0
+          nullable: true
+          description: "User's body weight in kilograms; optional."
+        weightClass:
+          type: string
+          nullable: true
+          description: "Computed by server from bodyWeightKg using configured ranges."
 
     StartSessionRequest:
       type: object

@@ -39,3 +39,6 @@ Approx values:
 - Ignore sets where reps > 100 or weightKg > 500 by default (validation error).
 - Ignore sets with obviously impossible cadence (server-side future check).
 - Server is the source of truth: XP is computed server-side, not by the client.
+
+## Weight Classes
+Weight classes are for fair comparison on leaderboards. XP/Level math is independent of body weight and is not scaled by it.

@@ -6,3 +6,7 @@
 - Local leaderboard (later :Global)
 Non-goals (MVP): sensors, BLE, payments.
 Open questions: achievements list, titles taxonomy.
+## Weight Classes (MVP+)
+- Users can set "bodyWeightKg".
+- Server computes "weightClass" from configurable ranges (see docs/weight-classes.md).
+- Leaderboard supports an optional 'weightClass' filter.

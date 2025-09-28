@@ -41,9 +41,9 @@ See: [`docs/architecture-v0.md`](docs/architecture-v0.md)
 
 ## Roadmap (high level)
 
-- Repository and documentation scaffold ✅  
-- API contract (OpenAPI) ✅  
-- XP/level rules and test plan ✅  
+- Repository and documentation scaffold 
+- API contract (OpenAPI) 
+- XP/level rules and test plan   
 - Choose backend language (Python or Go)  
 - CLI for XP math + unit tests  
 - API service (Dockerized) and `/v1/sets` endpoint  

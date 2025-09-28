@@ -1,0 +1,229 @@
+﻿openapi: 3.1.0
+info:
+  title: World of Gym API (v0)
+  version: 0.1.0
+servers:
+  - url: https://api.example.com
+    description: placeholder (replace later)
+security:
+  - bearerAuth: []
+
+paths:
+  /v1/auth/signup:
+    post:
+      summary: Create account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignupRequest"
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "409": { description: Email already exists }
+
+  /v1/auth/login:
+    post:
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401": { description: Invalid credentials }
+
+  /v1/users/me:
+    get:
+      summary: Get current user
+      security: [ { bearerAuth: [] } ]
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "401": { description: Unauthorized }
+
+  /v1/sessions:
+    post:
+      summary: Start a workout session
+      security: [ { bearerAuth: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StartSessionRequest" }
+      responses:
+        "201":
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Session" }
+
+  /v1/sessions/{sessionId}:
+    patch:
+      summary: End/update a workout session
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - in: path
+          name: sessionId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateSessionRequest" }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Session" }
+
+  /v1/sets:
+    post:
+      summary: Log a set (server calculates XP, cooldown, decay)
+      security: [ { bearerAuth: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateSetRequest" }
+      responses:
+        "201":
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Set" }
+        "422": { description: Validation error }
+
+  /v1/leaderboard:
+    get:
+      summary: Get leaderboard
+      parameters:
+        - in: query
+          name: period
+          schema:
+            type: string
+            enum: [daily, weekly, alltime]
+          required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  period: { type: string }
+                  top:
+                    type: array
+                    items: { $ref: "#/components/schemas/LeaderboardEntry" }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    SignupRequest:
+      type: object
+      required: [email, password, username]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+        username: { type: string, minLength: 3, maxLength: 24 }
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+    AuthResponse:
+      type: object
+      properties:
+        token: { type: string }
+        user: { $ref: "#/components/schemas/User" }
+
+    User:
+      type: object
+      properties:
+        id: { type: string }
+        username: { type: string }
+        level: { type: integer, minimum: 1 }
+        xp: { type: integer, minimum: 0, description: "progress within current level" }
+        totalXp: { type: integer, minimum: 0 }
+        lastWorkoutAt: { type: string, format: date-time }
+
+    StartSessionRequest:
+      type: object
+      properties:
+        startedAt: { type: string, format: date-time }
+
+    UpdateSessionRequest:
+      type: object
+      properties:
+        endedAt: { type: string, format: date-time }
+
+    Session:
+      type: object
+      properties:
+        id: { type: string }
+        startedAt: { type: string, format: date-time }
+        endedAt: { type: string, format: date-time, nullable: true }
+        totalDurationMin: { type: integer, minimum: 0 }
+        totalWeightLifted: { type: number }
+        totalXpEarned: { type: integer, minimum: 0 }
+
+    CreateSetRequest:
+      type: object
+      required: [exercise, reps, weightKg]
+      properties:
+        sessionId: { type: string, nullable: true, description: "server may auto-create a session if missing" }
+        exercise: { type: string, description: "e.g., bench_press, squat" }
+        reps: { type: integer, minimum: 1, maximum: 100 }
+        weightKg: { type: number, minimum: 0 }
+        timestamp: { type: string, format: date-time, nullable: true }
+
+    Set:
+      type: object
+      properties:
+        id: { type: string }
+        sessionId: { type: string }
+        exercise: { type: string }
+        reps: { type: integer }
+        weightKg: { type: number }
+        xpEarned: { type: integer }
+        timestamp: { type: string, format: date-time }
+
+    LeaderboardEntry:
+      type: object
+      properties:
+        uid: { type: string }
+        username: { type: string }
+        totalXp: { type: integer }
+
+    Error:
+      type: object
+      properties:
+        message: { type: string }
+        code: { type: string }

@@ -7,7 +7,7 @@ def _round_half_up(x: float) -> int:
 def xp_to_next(level: int) -> int:
     if level < 1:
         raise ValueError("level must be >= 1")
-    return 100 + math.floor(30 * (level ** 1.35))
+    return 100 + math.floor(25 * (level ** 1.35))
 
 def set_xp(reps: int, weight_kg: float, level: int) -> int:
     if reps < 1:

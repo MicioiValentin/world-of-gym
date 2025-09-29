@@ -1,0 +1,11 @@
+services:
+  api:
+    build:
+      context: ../
+      dockerfile: api/python/Dockerfile
+    container_name: wog-api-dev
+    ports:
+      - "8000:8000"
+    volumes:
+      - ..api/python:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload

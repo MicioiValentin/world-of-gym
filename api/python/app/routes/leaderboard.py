@@ -1,18 +1,30 @@
 from typing import Optional
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Depends
+from sqlmodel import select
 from ..schemas import LeaderboardEntry, LeaderboardResponse
+from ..models import UserDB
+from ..db import get_session
 
 router = APIRouter(tags=["leaderboard"])
 
-_LEADERBOARD = [
-    LeaderboardEntry(userId="u_1", username="valentin", level=6, totalXp=12345, weightClass="83 kg"),
-    LeaderboardEntry(userId="u_2", username="alex",     level=4, totalXp= 8123, weightClass="74 kg"),
-    LeaderboardEntry(userId="u_3", username="jordan",   level=9, totalXp=25000, weightClass="120+ kg"),
-]
-
 @router.get("/leaderboard", response_model=LeaderboardResponse)
-def leaderboard(weightClass: Optional[str] = Query(default=None)):
-    items = _LEADERBOARD
+def leaderboard(
+    weightClass: Optional[str] = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    session = Depends(get_session),
+):
+    stmt = select(UserDB).order_by(UserDB.xp.desc(), UserDB.level.desc())
     if weightClass:
-        items = [x for x in items if x.weightClass == weightClass]
+        stmt = stmt.filter(UserDB.weightClass == weightClass)
+    users = session.exec(stmt).all()[:limit]
+    items = [
+        LeaderboardEntry(
+            userId=u.id,
+            username=u.username,
+            level=u.level,
+            totalXp=u.xp,
+            weightClass=u.weightClass,
+        )
+        for u in users
+    ]
     return LeaderboardResponse(items=items)

@@ -1,47 +1,40 @@
-from fastapi import APIRouter, Depends
-from sqlmodel import select
-from ..schemas import User, UpdateProfileRequest
-from ..models import UserDB
+from fastapi import APIRouter, Depends, Header, HTTPException
+from sqlmodel import Session, select
 from ..db import get_session
-from wog.weight_classes import classify
+from ..models import UserDB
+from ..schemas import User, UpdateProfileRequest
 
-router = APIRouter(tags=["users"])
+router = APIRouter()
 
-ME_ID = "u_1"
-ME_USERNAME = "valentin"
+def current_user_id(x_user_id: str = Header(..., alias="X-User-Id")) -> str:
+    return x_user_id
 
-@router.get("/users/me", response_model=User)
-def get_me(session=Depends(get_session)):
-    user = session.get(UserDB, ME_ID)
+@router.get("/v1/users/me", response_model=User)
+def get_me(
+    session: Session = Depends(get_session),
+    user_id: str = Depends(current_user_id),
+):
+    user = session.get(UserDB, user_id)
     if not user:
-        user = UserDB(id=ME_ID, username=ME_USERNAME, level=1, xp=0)
+        user = UserDB(id=user_id, username="player1", level=1, xp=0)
         session.add(user)
         session.commit()
         session.refresh(user)
-    return _to_api_user(user)
+    return User.model_validate(user)
 
-@router.patch("/users/me", response_model=User)
-def patch_me(req: UpdateProfileRequest, session=Depends(get_session)):
-    user = session.get(UserDB, ME_ID)
+@router.patch("/v1/users/me", response_model=User)
+def update_me(
+    payload: UpdateProfileRequest,
+    session: Session = Depends(get_session),
+    user_id: str = Depends(current_user_id),
+):
+    user = session.get(UserDB, user_id)
     if not user:
-        user = UserDB(id=ME_ID, username=ME_USERNAME, level=1, xp=0)
-        session.add(user)
+        raise HTTPException(status_code=404, detail="User not found")
 
-    if req.bodyWeightKg is not None:
-        user.bodyWeightKg = req.bodyWeightKg
-        user.weightClass = classify(req.bodyWeightKg)
-
+    if payload.bodyWeightKg is not None:
+        user.bodyWeightKg = payload.bodyWeightKg
     session.add(user)
     session.commit()
     session.refresh(user)
-    return _to_api_user(user)
-
-def _to_api_user(u: UserDB) -> User:
-    return User(
-        id=u.id,
-        username=u.username,
-        level=u.level,
-        xp=u.xp,
-        bodyWeightKg=u.bodyWeightKg,
-        weightClass=u.weightClass,
-    )
+    return User.model_validate(user)

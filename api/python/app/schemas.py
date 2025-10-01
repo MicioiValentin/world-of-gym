@@ -12,6 +12,7 @@ class User(BaseModel):
 class UpdateProfileRequest(BaseModel):
     bodyWeightKg: Optional[float] = None
 
+
 class SetRequest(BaseModel):
     reps: int = Field(ge=1)
     WeightKg: float
@@ -23,10 +24,6 @@ class SetResult(BaseModel):
     newLevel: int
     newXp: int
 
-class WeightClass(BaseModel):
-    name: str
-    minKg: float
-    maxKg: Optional[float] = None
 
 class LeaderboardEntry(BaseModel):
     userId: str

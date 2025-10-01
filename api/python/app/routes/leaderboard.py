@@ -1,30 +1,44 @@
+from fastapi import APIRouter, Depends, Query
 from typing import Optional
-from fastapi import APIRouter, Query, Depends
-from sqlmodel import select
-from ..schemas import LeaderboardEntry, LeaderboardResponse
-from ..models import UserDB
+from sqlmodel import Session, select
 from ..db import get_session
+from ..models import UserDB
+from ..schemas import LeaderboardEntry, LeaderboardResponse
 
-router = APIRouter(tags=["leaderboard"])
+router = APIRouter()
 
-@router.get("/leaderboard", response_model=LeaderboardResponse)
+@router.get("/v1/leaderboard", response_model=LeaderboardResponse)
 def leaderboard(
-    weightClass: Optional[str] = Query(default=None),
-    limit: int = Query(default=50, ge=1, le=200),
-    session = Depends(get_session),
+    weightClass: Optional[str] = Query(default=None, description="e.g., '93kg'"),
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    session: Session = Depends(get_session),
 ):
-    stmt = select(UserDB).order_by(UserDB.xp.desc(), UserDB.level.desc())
-    if weightClass:
-        stmt = stmt.filter(UserDB.weightClass == weightClass)
-    users = session.exec(stmt).all()[:limit]
+    stmt = select(UserDB)
+
+
+    if weightClass is not None:
+        stmt = stmt.where(UserDB.weightClass == weightClass)
+
+    stmt = (
+        stmt.order_by(
+            UserDB.level.desc(),
+            UserDB.xp.desc(),
+            UserDB.username.asc(),  
+        )
+        .offset(offset)
+        .limit(limit)
+    )
+
+    rows = session.exec(stmt).all()
     items = [
         LeaderboardEntry(
-            userId=u.id,
-            username=u.username,
-            level=u.level,
-            totalXp=u.xp,
-            weightClass=u.weightClass,
+            userId=row.id,
+            username=row.username,
+            level=row.level,
+            totalXp=row.xp,
+            weightClass=row.weightClass,
         )
-        for u in users
+        for row in rows
     ]
     return LeaderboardResponse(items=items)

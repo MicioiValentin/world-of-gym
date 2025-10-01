@@ -8,3 +8,4 @@ pydantic
 sqlmodel
 psycopg[binary]
 python-dotenv
+alembic

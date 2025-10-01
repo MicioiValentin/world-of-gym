@@ -5,7 +5,7 @@ from typing import Optional, List
 class WeightClass:
     name: str
     min_kg: float
-    max_kg: Optional[float]  # None = open-ended
+    max_kg: float
 
 DEFAULT_CLASSES: List[WeightClass] = [
     WeightClass("59 kg", 0.0, 59.0),
@@ -25,3 +25,10 @@ def classify(body_weight_kg: Optional[float], classes: List[WeightClass] = DEFAU
         if body_weight_kg >= cls.min_kg and (cls.max_kg is None or body_weight_kg <= cls.max_kg):
             return cls.name
     return None
+
+WEIGHT_CLASSES = DEFAULT_CLASSES
+
+__all__ = [
+    "DEFAULT_CLASSES",
+    "WEIGHT_CLASSES",
+]

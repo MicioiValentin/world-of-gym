@@ -1,11 +1,13 @@
 ﻿from dataclasses import dataclass
-from typing import Optional, List
+from typing import List, Optional
+
 
 @dataclass(frozen=True)
 class WeightClass:
     name: str
     min_kg: float
     max_kg: float
+
 
 DEFAULT_CLASSES: List[WeightClass] = [
     WeightClass("59 kg", 0.0, 59.0),
@@ -18,13 +20,19 @@ DEFAULT_CLASSES: List[WeightClass] = [
     WeightClass("120+ kg", 120.01, None),
 ]
 
-def classify(body_weight_kg: Optional[float], classes: List[WeightClass] = DEFAULT_CLASSES) -> Optional[str]:
+
+def classify(
+    body_weight_kg: Optional[float], classes: List[WeightClass] = DEFAULT_CLASSES
+) -> Optional[str]:
     if body_weight_kg is None:
         return None
     for cls in classes:
-        if body_weight_kg >= cls.min_kg and (cls.max_kg is None or body_weight_kg <= cls.max_kg):
+        if body_weight_kg >= cls.min_kg and (
+            cls.max_kg is None or body_weight_kg <= cls.max_kg
+        ):
             return cls.name
     return None
+
 
 WEIGHT_CLASSES = DEFAULT_CLASSES
 

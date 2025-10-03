@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wog-api-config
+  namespace: {{ default .Release.Namespace .Values.global.namespace }}
+data:
+  ENV: {{ .Values.api.env.ENV | quote }}
+  LOG_LEVEL: {{ .Values.api.env.LOG_LEVEL | quote }}

@@ -1,0 +1,108 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wog-api
+  namespace: {{ default .Release.Namespace .Values.global.namespace }}
+spec:
+  replicas: {{ .Values.api.replicaCount }}
+  selector:
+    matchLabels:
+      app: wog-api
+  template:
+    metadata:
+      labels:
+        app: wog-api
+    spec:
+      initContainers:
+        - name: wait-db
+          image: {{ .Values.postgres.image }}
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: wog-db-secrets
+                  key: POSTGRES_DB
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: wog-db-secrets
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: wog-db-secrets
+                  key: POSTGRES_PASSWORD
+          command: ["sh", "-c"]
+          args:
+            - |
+              export PGPASSWORD="$POSTGRES_PASSWORD"
+              i=1
+              while [ $i -le 60 ]; do
+                if pg_isready -h wog-postgres.{{ default .Release.Namespace .Values.global.namespace }}.svc.cluster.local -p {{ .Values.postgres.servicePort }} -U "$POSTGRES_USER" -d "$POSTGRES_DB"; then
+                  exit 0
+                fi
+                echo "Waiting for Postgres... ($i)"
+                i=$((i+1))
+                sleep 2
+              done
+              echo "Postgres not ready in time"; exit 1
+
+        - name: alembic-migrate
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: wog-db-secrets
+                  key: DATABASE_URL
+          command: ["sh", "-c"]
+          args: ["alembic upgrade head"]
+
+      containers:
+        - name: api
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.api.port }}
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: wog-db-secrets
+                  key: DATABASE_URL
+          envFrom:
+            - configMapRef:
+                name: wog-api-config
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.api.readinessPath }}
+              port: {{ .Values.api.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.api.livenessPath }}
+              port: {{ .Values.api.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: {{ .Values.api.resources.requests.cpu | quote }}
+              memory: {{ .Values.api.resources.requests.memory | quote }}
+            limits:
+              cpu: {{ .Values.api.resources.limits.cpu | quote }}
+              memory: {{ .Values.api.resources.limits.memory | quote }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wog-api
+  namespace: {{ default .Release.Namespace .Values.global.namespace }}
+spec:
+  type: ClusterIP
+  selector:
+    app: wog-api
+  ports:
+    - port: 80
+      targetPort: {{ .Values.api.port }}

@@ -1,13 +1,16 @@
 from fastapi import APIRouter, Depends, Header, HTTPException
-from sqlmodel import Session, select
+from sqlmodel import Session
+
 from ..db import get_session
 from ..models import UserDB
-from ..schemas import User, UpdateProfileRequest
+from ..schemas import UpdateProfileRequest, User
 
 router = APIRouter()
 
+
 def current_user_id(x_user_id: str = Header(..., alias="X-User-Id")) -> str:
     return x_user_id
+
 
 @router.get("/v1/users/me", response_model=User)
 def get_me(
@@ -21,6 +24,7 @@ def get_me(
         session.commit()
         session.refresh(user)
     return User.model_validate(user)
+
 
 @router.patch("/v1/users/me", response_model=User)
 def update_me(

@@ -1,0 +1,47 @@
+global:
+  namespace: wog
+
+image:
+  repository: wog-api
+  tag: "0.1.2"
+  pullPolicy: IfNotPresent
+
+api:
+  replicaCount: 1
+  port: 8000
+  env:
+    ENV: "dev"
+    LOG_LEVEL: "info"
+  livenessPath: /docs
+  readinessPath: /docs
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+postgres:
+  image: postgres:16
+  servicePort: 5432
+  storage: 5Gi
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+  db:
+    name: wog
+    user: wog
+    password: wogpass
+
+redis:
+  enabled: false
+  image: redis:7
+  servicePort: 6379
+
+ingress:
+  enabled: false
+  className: nginx
+  host: wog.local
+

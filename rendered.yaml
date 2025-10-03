@@ -1,0 +1,142 @@
+---
+# Source: wog/templates/secret-db.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: wog-db-secrets
+  namespace: wog
+type: Opaque
+stringData:
+  POSTGRES_DB: "wog"
+  POSTGRES_USER: "wog"
+  POSTGRES_PASSWORD: "wogpass"
+  DATABASE_URL: "postgresql://wog:wogpass@wog-postgres.wog.svc.cluster.local:5432/wog"
+---
+# Source: wog/templates/cm-api.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wog-api-config
+  namespace: wog
+data:
+  ENV: "dev"
+  LOG_LEVEL: "info"
+---
+# Source: wog/templates/postgres.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: wog-postgres-pvc
+  namespace: wog
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 5Gi
+---
+# Source: wog/templates/api.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: wog-api
+  namespace: wog
+spec:
+  type: ClusterIP
+  selector:
+    app: wog-api
+  ports:
+    - port: 80
+      targetPort: 8000
+---
+# Source: wog/templates/postgres.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: wog-postgres
+  namespace: wog
+spec:
+  ports:
+    - port: 5432
+      targetPort: 5432
+  selector:
+    app: wog-postgres
+---
+# Source: wog/templates/api.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wog-api
+  namespace: wog
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: wog-api }
+  template:
+    metadata:
+      labels: { app: wog-api }
+    spec:
+      containers:
+        - name: api
+          image: "wog-api:0.1.0"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: wog-db-secrets
+                  key: DATABASE_URL
+          envFrom:
+            - configMapRef:
+                name: wog-api-config
+          readinessProbe:
+            httpGet: { path: /health, port: 8000 }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /health, port: 8000 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+---
+# Source: wog/templates/postgres.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: wog-postgres
+  namespace: wog
+spec:
+  selector:
+    matchLabels: { app: wog-postgres }
+  serviceName: wog-postgres
+  replicas: 1
+  template:
+    metadata:
+      labels: { app: wog-postgres }
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - secretRef:
+                name: wog-db-secrets
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: wog-postgres-pvc

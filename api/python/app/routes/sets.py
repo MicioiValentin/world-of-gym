@@ -1,12 +1,13 @@
-from fastapi import APIRouter, Depends
-from sqlmodel import Session
 from app.db import get_session
 from app.models import UserDB
 from app.schemas import SetRequest, SetResult
-from wog.progression import set_xp, apply_xp
+from fastapi import APIRouter, Depends
+from sqlmodel import Session
+from wog.progression import apply_xp, set_xp
 
 router = APIRouter()
 ME_ID = "u_1"
+
 
 @router.post("/v1/sets", response_model=SetResult)
 def log_set(payload: SetRequest, session: Session = Depends(get_session)):

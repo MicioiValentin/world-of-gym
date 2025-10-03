@@ -1,11 +1,14 @@
-from fastapi import APIRouter, Depends, Query
 from typing import Optional
+
+from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session, select
+
 from ..db import get_session
 from ..models import UserDB
 from ..schemas import LeaderboardEntry, LeaderboardResponse
 
 router = APIRouter()
+
 
 @router.get("/v1/leaderboard", response_model=LeaderboardResponse)
 def leaderboard(
@@ -16,7 +19,6 @@ def leaderboard(
 ):
     stmt = select(UserDB)
 
-
     if weightClass is not None:
         stmt = stmt.where(UserDB.weightClass == weightClass)
 
@@ -24,7 +26,7 @@ def leaderboard(
         stmt.order_by(
             UserDB.level.desc(),
             UserDB.xp.desc(),
-            UserDB.username.asc(),  
+            UserDB.username.asc(),
         )
         .offset(offset)
         .limit(limit)

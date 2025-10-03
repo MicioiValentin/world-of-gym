@@ -1,0 +1,7 @@
+apiVersion: v2
+name: wog
+description: World of Gym - API + Postgres (+ Redis)
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+

@@ -1,6 +1,8 @@
 import argparse
-from wog.progression import set_xp, apply_xp, xp_to_next
+
+from wog.progression import apply_xp, set_xp, xp_to_next
 from wog.weight_classes import classify
+
 
 def main():
     p = argparse.ArgumentParser(prog="wog-cli", description="World of Gym CLI")
@@ -32,6 +34,7 @@ def main():
         print(xp_to_next(args.level))
     elif args.cmd == "classify":
         print(classify(args.bw))
+
 
 if __name__ == "__main__":
     main()

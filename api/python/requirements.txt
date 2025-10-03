@@ -9,3 +9,4 @@ sqlmodel
 psycopg[binary]
 python-dotenv
 alembic
+psycopg2-binary==2.9.9

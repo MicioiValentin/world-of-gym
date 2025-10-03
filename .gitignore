@@ -140,3 +140,13 @@ vite.config.ts.timestamp-*
 
 rendered.yaml
 wog-api-*.tar
+
+# Local dev artifacts
+api/python/test.db
+test.db
+api/python/.pytest_cache/
+api/python/__pycache__/
+__pycache__/
+*.pyc
+api/python/.venv/
+

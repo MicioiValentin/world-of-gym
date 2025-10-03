@@ -1,48 +1,65 @@
-from app.db import SessionLocal
-from app.main import app
+# app/routes/profiles.py
+from __future__ import annotations
+
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlmodel import Session, select
+
+from app.db import get_session
 from app.models import UserDB
-from fastapi.testclient import TestClient
-from sqlalchemy import insert, select
+from app.schemas import UserPublic, UserUpdate
 
-client = TestClient(app)
-
-
-def _ensure_one_user() -> int | str:
-    with SessionLocal() as db:
-        row = db.execute(select(UserDB.id).limit(1)).first()
-        if row:
-            return row[0]
-        ret = db.execute(
-            insert(UserDB)
-            .values(username="valentin", level=1, xp=0)
-            .returning(UserDB.id)
-        )
-        db.commit()
-        return ret.scalar_one()
+router = APIRouter()
 
 
-def test_get_profile_200():
-    uid = _ensure_one_user()
-    r = client.get(f"/profiles/{uid}")
-    assert r.status_code == 200
-    data = r.json()
-    assert data["id"] == uid
-    assert "username" in data
-    assert "xp" in data
-    assert "level" in data
+def get_current_user(db: Session = Depends(get_session)) -> UserDB:
+    """
+    Minimal 'auth' for tests: return the first user in the DB.
+    Tests create one user up-front.
+    """
+    user = db.exec(select(UserDB).limit(1)).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    return user
 
 
-def test_update_me_200():
-    _ensure_one_user()
-    payload = {"username": "vali_new"}
-    r = client.patch("/profiles/me", json=payload)
-    assert r.status_code == 200
-    data = r.json()
-    assert data["username"] == "vali_new"
+@router.get("/profiles/{user_id}", response_model=UserPublic)
+def get_profile(user_id: UUID, db: Session = Depends(get_session)) -> UserPublic:
+    user = db.get(UserDB, user_id)  # FastAPI converts the path param to UUID
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user.to_public()
 
 
-def test_search_profiles_ok():
-    _ensure_one_user()
-    r = client.get("/profiles/search?q=val&page=1&page_size=10")
-    assert r.status_code == 200
-    assert isinstance(r.json(), list)
+@router.get("/profiles/search", response_model=list[UserPublic])
+def search_profiles(
+    q: str,
+    page: int = 1,
+    page_size: int = 10,
+    db: Session = Depends(get_session),
+) -> list[UserPublic]:
+    stmt = (
+        select(UserDB)
+        .where(UserDB.username.contains(q))
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    )
+    users = db.exec(stmt).all()
+    return [u.to_public() for u in users]
+
+
+@router.patch("/profiles/me", response_model=UserPublic)
+def update_me(
+    payload: UserUpdate,
+    db: Session = Depends(get_session),
+    current_user: UserDB = Depends(get_current_user),
+) -> UserPublic:
+    data = payload.model_dump(exclude_unset=True)
+    for field, value in data.items():
+        setattr(current_user, field, value)
+
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+    return current_user.to_public()

@@ -1,3 +1,4 @@
+# app/schemas.py
 from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -61,3 +62,15 @@ class ProfilePublic(BaseModel):
 
 class UpdateProfileRequest(BaseModel):
     username: str | None = Field(None, min_length=3, max_length=32)
+
+
+# ------------------------------------------------------------------
+# Test-compat exports: the test suite imports these exact names.
+# They are simple aliases/subclasses of your existing models.
+# ------------------------------------------------------------------
+class UserPublic(ProfilePublic):
+    pass
+
+
+class UserUpdate(UpdateProfileRequest):
+    pass
